@@ -3,6 +3,7 @@ package textutil
 import (
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 var (
@@ -40,4 +41,65 @@ func Camelize(s string, upperFirst bool) string {
 	})
 
 	return s
+}
+
+// SplitWord splits the text by word breaks.
+func SplitWord(text string) []string {
+	var words []string
+
+	runes := []rune(text)
+	offset := 0
+	i := 0
+	for ; i < len(runes); i++ {
+		var prev, r, next rune
+		r = runes[i]
+		if i > 0 {
+			prev = runes[i-1]
+		}
+		if i < len(runes)-1 {
+			next = runes[i+1]
+		}
+
+		split, canAppend := isStartRune(r, prev, next)
+		if i > offset && split {
+			if canAppend {
+				words = append(words, string(runes[offset:i]))
+			}
+			offset = i
+		}
+	}
+	if offset < len(runes) {
+		w := string(runes[offset:])
+		if w != " " {
+			words = append(words, w)
+		}
+	}
+
+	return words
+}
+
+func isStartRune(r, prev, next rune) (result, canAppend bool) {
+	switch {
+	case unicode.IsUpper(r):
+		if !unicode.IsUpper(prev) || unicode.IsLower(next) {
+			result = true
+		}
+	case unicode.IsLower(r):
+		if !unicode.IsUpper(prev) && !unicode.IsLower(prev) {
+			result = true
+		}
+	case unicode.IsNumber(r):
+		if !unicode.IsNumber(prev) {
+			result = true
+		}
+	default:
+		if unicode.IsSpace(prev) || unicode.IsUpper(prev) || unicode.IsLower(prev) || unicode.IsNumber(prev) {
+			result = true
+		}
+	}
+	if result && !unicode.IsSpace(prev) {
+		canAppend = true
+	}
+
+	return
 }
